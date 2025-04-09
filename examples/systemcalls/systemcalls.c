@@ -20,6 +20,7 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+	fflush(stdout) ;
     if(system(cmd) == 0)
     	return true;
     return false;
@@ -63,7 +64,7 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
-    
+    fflush(stdout);
     	//pid_t parent = getpid();
 	pid_t pid = fork();
 
@@ -129,6 +130,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    fflush(stdout) ;
     printf("Output file is : %s\n",outputfile);
     pid_t pid = fork();
 
