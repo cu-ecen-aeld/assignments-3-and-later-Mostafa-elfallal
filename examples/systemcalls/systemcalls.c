@@ -1,5 +1,9 @@
 #include "systemcalls.h"
-
+#include "stdlib.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -16,8 +20,9 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+    if(system(cmd) == 0)
+    	return true;
+    return false;
 }
 
 /**
@@ -58,7 +63,39 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    
+    	//pid_t parent = getpid();
+	pid_t pid = fork();
 
+	if (pid == -1)
+	{
+    		// error, failed to fork()
+	}
+	else if (pid > 0)
+	{
+    		int status;
+		 waitpid(pid, &status, 0);
+if (WIFEXITED(status)) {
+    int exit_code = WEXITSTATUS(status);
+    printf("Child exited with status: %d\n", exit_code);
+	return !exit_code;
+} else if (WIFSIGNALED(status)) {
+    int signal = WTERMSIG(status);
+    printf("Child was terminated by signal: %d\n", signal);
+} else {
+    printf("Child exited abnormally\n");
+}	
+	}
+	else
+	{
+		printf("command is %s\n",command[0]);
+    		// we are the child
+    		execv(command[0], command);
+		printf("command is %s after execv\n",command[0]);
+		perror("execv failed");
+		va_end(args);
+    		return false;   // exec never returns
+	}
     va_end(args);
 
     return true;
@@ -92,6 +129,54 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    printf("Output file is : %s\n",outputfile);
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid == 0) {
+        // Child process
+
+        // Open the file for writing (create if it doesn't exist)
+        int fd = open(outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0) {
+            perror("open failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // Redirect stdout to the file
+        if (dup2(fd, STDOUT_FILENO) < 0) {
+            perror("dup2 failed");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+
+        close(fd); // Not needed after dup2
+
+        // Prepare arguments for execv
+        //char *args[] = {"/bin/ls", "-l", "/tmp", NULL};
+
+        // Replace child with ls command
+        execv(command[0], command);
+
+        // execv only returns if it fails
+        perror("execv failed");
+        return false;
+    } else {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0);
+
+        if (WIFEXITED(status)) {
+//            printf("Child exited with status: %d\n", WEXITSTATUS(status));
+        } else {
+  //          printf("Child did not exit normally.\n");
+        }
+    }
+    /* do whatever the parent wants to do. */
 
     va_end(args);
 
