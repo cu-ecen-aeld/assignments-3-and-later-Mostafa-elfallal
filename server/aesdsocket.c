@@ -208,37 +208,46 @@ void signal_handler(int signo) {
 
 void daemonize() {
     log_info("Starting daemonization process");
+
     pid_t pid = fork();
     if (pid < 0) {
         log_error("First fork failed");
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
-        log_info("Parent process exiting");
+        // Parent exits
         exit(EXIT_SUCCESS);
     }
 
+    // Create a new session
     if (setsid() == -1) {
         log_error("setsid failed");
         exit(EXIT_FAILURE);
     }
 
+    // Second fork to ensure the daemon isn't a session leader
     pid = fork();
     if (pid < 0) {
         log_error("Second fork failed");
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
-        log_info("Grandparent process exiting");
         exit(EXIT_SUCCESS);
     }
 
+    // Set file mode mask
     umask(0);
-    chdir("/");
 
+    // Change working directory to root (optional)
+    if (chdir("/") < 0) {
+        log_error("Failed to change directory to /");
+        exit(EXIT_FAILURE);
+    }
+
+    // Only close stdin — leave stdout and stderr open
     close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
-    log_info("Daemonization completed");
+
+    log_info("Daemonization complete, stdout and stderr are still open");
 }
+
 
 void setup_signal_handlers() {
     log_info("Setting up signal handlers");
