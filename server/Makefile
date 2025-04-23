@@ -11,7 +11,7 @@ OBJS = $(SRCS:.c=.o)
 all: $(TARGET)
 # this is the target to build the aesdsocket executable
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET)
+	$(CC) $(LDFLAGS) $(OBJS) -o $(TARGET)
 
 $(OBJS): $(SRCS)
 	$(CC) $(CFLAGS) -c $(SRCS) -o $(OBJS)
