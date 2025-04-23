@@ -1,8 +1,9 @@
 # this should use native compiler if there is no external compiler
 # should clean compilation artifacts 
 #  the compiled file is aesdsocket.c into aesdsocket
-CC := $(CROSS_COMPILE)gcc
-CFLAGS = -Wall -Wextra
+CC ?= gcc
+CFLAGS ?= -Wall -Wextra
+LDFLAGS ?= -lpthread
 TARGET = aesdsocket
 SRCS = aesdsocket.c
 OBJS = $(SRCS:.c=.o)
