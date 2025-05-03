@@ -32,7 +32,7 @@
 #endif
 
 int sockfd = -1;
-FILE *file_fp = NULL;
+
 volatile sig_atomic_t exit_requested = 0;
 pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -81,6 +81,14 @@ void remove_node(struct slisthead *head, slist_data_t *node) {
 }
 
 void *connector(void *arg) {
+    FILE *file_fp = NULL;
+    log_info("Opening data file");
+    file_fp = fopen(FILE_PATH, "a+");
+    if (!file_fp) {
+        log_error("File open failed");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
     log_info("Connection thread started");
     thread_arg_t *thread_arg = (thread_arg_t *)arg;
     int client_sock = thread_arg->client_sock;
@@ -127,6 +135,10 @@ void *connector(void *arg) {
         pthread_mutex_unlock(&file_mutex);
         free(message_buf);
     }
+    if (file_fp) {
+        log_info("Closing data file");
+        fclose(file_fp);
+    }
     thread_arg->finished = 1;
     close(client_sock);
     log_info("Connection thread completed");
@@ -134,6 +146,14 @@ void *connector(void *arg) {
 }
 
 void *timestamp_thread(void *arg) {
+    FILE *file_fp = NULL;
+    log_info("Opening data file");
+    file_fp = fopen(FILE_PATH, "a+");
+    if (!file_fp) {
+        log_error("File open failed");
+        cleanup();
+        exit(EXIT_FAILURE);
+    }
     log_info("Timestamp thread started");
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -158,7 +178,10 @@ void *timestamp_thread(void *arg) {
         fflush(file_fp);
         pthread_mutex_unlock(&file_mutex);
     }
-
+    if (file_fp) {
+        log_info("Closing data file");
+        fclose(file_fp);
+    }
     log_info("Timestamp thread exiting");
     return NULL;
 }
@@ -194,10 +217,6 @@ void cleanup() {
         log_info("Closing server socket");
         shutdown(sockfd, SHUT_RDWR); 
         close(sockfd);
-    }
-    if (file_fp) {
-        log_info("Closing data file");
-        fclose(file_fp);
     }
 #if !USE_AESD_CHAR_DEVICE
     log_info("Removing data file");
@@ -331,14 +350,6 @@ int main(int argc, char *argv[]) {
     log_info("Starting to listen on socket");
     if (listen(sockfd, 10) != 0) {
         log_error("Listen failed");
-        cleanup();
-        exit(EXIT_FAILURE);
-    }
-
-    log_info("Opening data file");
-    file_fp = fopen(FILE_PATH, "a+");
-    if (!file_fp) {
-        log_error("File open failed");
         cleanup();
         exit(EXIT_FAILURE);
     }
