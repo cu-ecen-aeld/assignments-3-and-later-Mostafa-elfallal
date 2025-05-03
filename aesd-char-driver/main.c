@@ -162,7 +162,8 @@ struct file_operations aesd_fops = {
 static int aesd_setup_cdev(struct aesd_dev *dev)
 {
     int err, devno = MKDEV(aesd_major, aesd_minor);
-
+    // log err and devno to printk
+    printk(KERN_WARNING "No Worries err = %d and devno = %d\n",err,devno);
     cdev_init(&dev->cdev, &aesd_fops);
     dev->cdev.owner = THIS_MODULE;
     dev->cdev.ops = &aesd_fops;
@@ -180,8 +181,7 @@ int __init aesd_init_module(void)
     printk(KERN_WARNING "No Worries Just starting init\n");
     dev_t dev = 0;
     int result;
-    result = alloc_chrdev_region(&dev, aesd_minor, 1,
-            "aesdchar");
+    result = alloc_chrdev_region(&dev, aesd_minor, 1,"aesdchar");
     aesd_major = MAJOR(dev);
     if (result < 0) {
         printk(KERN_WARNING "Worries Major is not found\n");
@@ -203,6 +203,7 @@ int __init aesd_init_module(void)
         unregister_chrdev_region(dev, 1);
         printk(KERN_WARNING "Worries unregister\n");
     }
+    printk(KERN_INFO "aesdchar module loaded\n");
     return result;
 
 }
