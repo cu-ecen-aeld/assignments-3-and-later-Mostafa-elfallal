@@ -21,7 +21,15 @@
 
 #define PORT 9000
 #define BUFFER_SIZE 1024
+#ifndef USE_AESD_CHAR_DEVICE
+#define USE_AESD_CHAR_DEVICE 1
+#endif 
+
+#if USE_AESD_CHAR_DEVICE
+#define FILE_PATH "/dev/aesdchar"
+#else
 #define FILE_PATH "/var/tmp/aesdsocketdata"
+#endif
 
 int sockfd = -1;
 FILE *file_fp = NULL;
@@ -191,10 +199,10 @@ void cleanup() {
         log_info("Closing data file");
         fclose(file_fp);
     }
-    
+#if !USE_AESD_CHAR_DEVICE
     log_info("Removing data file");
     unlink(FILE_PATH);
-    
+#endif
     log_info("Cleanup completed");
 }
 
@@ -334,8 +342,10 @@ int main(int argc, char *argv[]) {
         cleanup();
         exit(EXIT_FAILURE);
     }
-
+#if !USE_AESD_CHAR_DEVICE
     start_timestamp_thread();
+#endif
+
     log_info("Server ready to accept connections");
 
     while (!exit_requested) {
