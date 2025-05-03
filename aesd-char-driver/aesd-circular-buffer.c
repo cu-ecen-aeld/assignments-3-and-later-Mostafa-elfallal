@@ -40,7 +40,7 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     bool pass = buffer->full;
     for(index = buffer->out_offs;index != buffer->in_offs || pass; index = (index + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED){
         pass = false;
-        entry = &buffer->entry[index];
+        entry = buffer->entry[index];
         if(!entry) 
             return NULL;
         if(total_size + entry->size > char_offset) {
