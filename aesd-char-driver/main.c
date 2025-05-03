@@ -175,14 +175,16 @@ static int aesd_setup_cdev(struct aesd_dev *dev)
 
 
 
-int aesd_init_module(void)
+int __init aesd_init_module(void)
 {
+    printk(KERN_WARNING "No Worries Just starting init\n");
     dev_t dev = 0;
     int result;
     result = alloc_chrdev_region(&dev, aesd_minor, 1,
             "aesdchar");
     aesd_major = MAJOR(dev);
     if (result < 0) {
+        printk(KERN_WARNING "Worries Major is not found\n");
         printk(KERN_WARNING "Can't get major %d\n", aesd_major);
         return result;
     }
@@ -199,12 +201,13 @@ int aesd_init_module(void)
 
     if( result ) {
         unregister_chrdev_region(dev, 1);
+        printk(KERN_WARNING "Worries unregister\n");
     }
     return result;
 
 }
 
-void aesd_cleanup_module(void)
+void __exit aesd_cleanup_module(void)
 {
     dev_t devno = MKDEV(aesd_major, aesd_minor);
 
