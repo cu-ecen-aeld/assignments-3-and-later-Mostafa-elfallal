@@ -18,7 +18,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include "queue.h"
-#include "aesd_ioctl.h"
+#include "../aesd-char-driver/aesd_ioctl.h"
 #define PORT 9000
 #define BUFFER_SIZE 1024
 #ifndef USE_AESD_CHAR_DEVICE
