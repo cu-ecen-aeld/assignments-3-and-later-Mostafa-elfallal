@@ -27,8 +27,19 @@ int aesd_minor =   0;
 MODULE_AUTHOR("Mostafa ElFallal"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
-struct aesd_dev aesd_device;
 
+int __init aesd_init_module(void);
+void __exit aesd_cleanup_module(void);
+static long aesd_adjust_file_offset(struct file*filp,unsigned int write_cmd,unsigned int write_cmd_offset);
+struct aesd_dev aesd_device;
+int aesd_open(struct inode *inode, struct file *filp);
+int aesd_release(struct inode *inode, struct file *filp);
+ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
+    loff_t *f_pos);
+ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
+        loff_t *f_pos);
+loff_t aesd_llseek(struct file *file, loff_t offset, int origin);
+static long aesd_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 int aesd_open(struct inode *inode, struct file *filp)
 {
     PDEBUG("open");
@@ -55,10 +66,13 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
-    mutex_lock_interruptible(&aesd_device.lock);
+    if (mutex_lock_interruptible(&aesd_device.lock)) {
+        PDEBUG("Mutex lock interrupted by a signal.\n");
+        return -ERESTARTSYS;  // Return error code to indicate interruption
+    }
     struct aesd_buffer_entry *entry;
     size_t entry_offset_byte_rtn;
-    while(entry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.circular_buffer, *f_pos, &entry_offset_byte_rtn)) {
+    while((entry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.circular_buffer, *f_pos, &entry_offset_byte_rtn))) {
         size_t remaining = entry->size - entry_offset_byte_rtn;
         if(remaining > count) {
             // read only the requested number of bytes
@@ -94,35 +108,27 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     /**
      * TODO: handle write
      */
-    mutex_lock_interruptible(&aesd_device.lock);
-    if(aesd_device.entry == NULL) {
-        aesd_device.entry = kmalloc(sizeof(struct aesd_buffer_entry), GFP_KERNEL);
-        if(aesd_device.entry == NULL) {
-            mutex_unlock(&aesd_device.lock);
-            return -ENOMEM;
-        }
+    if (mutex_lock_interruptible(&aesd_device.lock)) {
+        PDEBUG("Mutex lock interrupted by a signal.\n");
+        return -ERESTARTSYS;  // Return error code to indicate interruption
+    }
+    if(aesd_device.entry->buffptr == NULL) {
         aesd_device.entry->buffptr = kmalloc(count, GFP_KERNEL);
         if(aesd_device.entry->buffptr == NULL) {
-            kfree(aesd_device.entry);
-            aesd_device.entry = NULL;
             mutex_unlock(&aesd_device.lock);
             return -ENOMEM;
         }
-        aesd_device.entry->size = 0;
     }
     else {
         aesd_device.entry->buffptr = krealloc(aesd_device.entry->buffptr, aesd_device.entry->size + count, GFP_KERNEL);
         if(aesd_device.entry->buffptr == NULL) {
-            kfree(aesd_device.entry);
-            aesd_device.entry = NULL;
             mutex_unlock(&aesd_device.lock);
             return -ENOMEM;
         }
     }
-    if(copy_from_user(aesd_device.entry->buffptr + aesd_device.entry->size, buf, count)) {
+    if(copy_from_user((void *)&aesd_device.entry->buffptr[aesd_device.entry->size], buf, count)) {
         kfree(aesd_device.entry->buffptr);
-        kfree(aesd_device.entry);
-        aesd_device.entry = NULL;
+        aesd_device.entry->buffptr = NULL;
         mutex_unlock(&aesd_device.lock);
         return -EFAULT;
     }
@@ -140,11 +146,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
             aesd_device.size -= oldEntry->size;
             PDEBUG("Freeing Old Entry buffer");
             kfree(oldEntry->buffptr);
-            PDEBUG("Freeing Old Entry");
-            kfree(oldEntry);
         }
         aesd_device.size += count;
-        aesd_device.entry = NULL;
+        aesd_device.entry->buffptr = NULL;
     }
     retval = count;
     *f_pos += retval;
@@ -155,11 +159,14 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 loff_t aesd_llseek(struct file *file, loff_t offset, int origin)
 {
     loff_t new_pos;
-    mutex_lock_interruptible(&aesd_device.lock);
+    if (mutex_lock_interruptible(&aesd_device.lock)) {
+        PDEBUG("Mutex lock interrupted by a signal.\n");
+        return -ERESTARTSYS;  // Return error code to indicate interruption
+    }
     // loff_t size = 0;
-    uint8_t index;
-    struct aesd_circular_buffer buffer;
-    struct aesd_buffer_entry *entry;
+    // uint8_t index;
+    // struct aesd_circular_buffer buffer;
+    // struct aesd_buffer_entry *entry;
     // AESD_CIRCULAR_BUFFER_FOREACH(entry,&buffer,index) {
     //     size += entry->size;
     // }
@@ -187,11 +194,15 @@ static long aesd_adjust_file_offset(struct file*filp,unsigned int write_cmd,unsi
      * ret -EINVAL (out of range)
      * .unlocked_ioctl = mychardev_ioctl,  // Use this for newer kernelsde .
      */
-    mutex_lock_interruptible(&aesd_device.lock);
+    if (mutex_lock_interruptible(&aesd_device.lock)) {
+        PDEBUG("Mutex lock interrupted by a signal.\n");
+        return -ERESTARTSYS;  // Return error code to indicate interruption
+    }
     uint8_t index;
     struct aesd_buffer_entry *entry;
     loff_t total = 0;
-    AESD_CIRCULAR_BUFFER_FOREACH(entry,aesd_device.circular_buffer,index)
+    struct aesd_circular_buffer *buf = &aesd_device.circular_buffer ;
+    AESD_CIRCULAR_BUFFER_FOREACH(entry,buf,index)
     {
         if( write_cmd == index )
         {
@@ -233,14 +244,14 @@ struct file_operations aesd_fops = {
     .llseek = aesd_llseek,
     .open =     aesd_open,
     .release =  aesd_release,
-    .ioctl_unlock = aesd_ioctl,
+    .unlocked_ioctl = aesd_ioctl,
 };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
 {
     int err, devno = MKDEV(aesd_major, aesd_minor);
     // log err and devno to printk
-    PDEBUG("No Worries err = %d and devno = %d\n",err,devno);
+    // PDEBUG("No Worries err = %d and devno = %d\n",err,devno);
     cdev_init(&dev->cdev, &aesd_fops);
     dev->cdev.owner = THIS_MODULE;
     dev->cdev.ops = &aesd_fops;
@@ -272,7 +283,9 @@ int __init aesd_init_module(void)
      */
     aesd_circular_buffer_init(&aesd_device.circular_buffer);
     mutex_init(&aesd_device.lock);
-    aesd_device.entry = NULL;
+    aesd_device.entry = kmalloc(sizeof(struct aesd_buffer_entry), GFP_KERNEL);
+    aesd_device.entry->buffptr = NULL;
+    aesd_device.entry->size = 0;
     aesd_device.size = 0;
     result = aesd_setup_cdev(&aesd_device);
 
@@ -294,6 +307,7 @@ void __exit aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
+    kfree(aesd_device.entry);
 
     unregister_chrdev_region(devno, 1);
 }

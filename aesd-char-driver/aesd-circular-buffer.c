@@ -12,6 +12,7 @@
 #include <linux/string.h>
 #else
 #include <string.h>
+#include <stdio.h>
 #endif
 
 #include "aesd-circular-buffer.h"
@@ -39,13 +40,18 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     struct aesd_buffer_entry *entry;
     AESD_CIRCULAR_BUFFER_FOREACH(entry,buffer,index)
     {
+        
         if(total_size + entry->size > char_offset) {
+            // printf("index = %d\n",index);
             *entry_offset_byte_rtn = char_offset - total_size;
+            // printf("returned offset = %ld\n",*entry_offset_byte_rtn);
+            // printf("returned entry address : %p\n",entry);
+            // printf("returned text : %s\n",entry->buffptr);
             return entry;
         }
         total_size += entry->size;
     }
-
+    return NULL;
 }
 
 /**
@@ -55,14 +61,15 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
 * Any necessary locking must be handled by the caller
 * Any memory referenced in @param add_entry must be allocated by and/or must have a lifetime managed by the caller.
 */
-void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
+void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const  struct aesd_buffer_entry *add_entry)
 {
     /**
     * TODO: implement per description
     */
     if(!buffer || !add_entry)
        return;
-    buffer->entry[buffer->in_offs] = add_entry;
+    // printf("in index = %d\n",buffer->in_offs);
+    buffer->entry[buffer->in_offs] = *add_entry;
     buffer->in_offs++;
     if(buffer->in_offs >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
         buffer->in_offs = 0;
@@ -75,6 +82,8 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
     else if(buffer->in_offs == buffer->out_offs){
         buffer->full = true;
     }
+    // printf("in index = %d\n",buffer->in_offs);
+    // printf("out index = %d\n",buffer->out_offs);
 }
 
 /**

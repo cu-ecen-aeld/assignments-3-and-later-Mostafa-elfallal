@@ -35,7 +35,7 @@ struct aesd_circular_buffer
     /**
      * An array of pointers to memory allocated for the most recent write operations
      */
-    struct aesd_buffer_entry*  entry[AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED];
+    struct aesd_buffer_entry entry[AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED];
     /**
      * The current location in the entry structure where the next write should
      * be stored.
@@ -72,15 +72,16 @@ extern void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer);
  *      free(entry->buffptr);
  * }
  */
-// #define AESD_CIRCULAR_BUFFER_FOREACH(entryptr,buffer,index) \
-//     for(index=0, entryptr=&((buffer)->entry[index]); \
-//             index<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; \
-//             index++, entryptr=&((buffer)->entry[index]))
+/*#define AESD_CIRCULAR_BUFFER_FOREACH(entryptr,buffer,index) \
+    for(index=0, entryptr=&((buffer)->entry[index]); \
+           index<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; \
+           index++, entryptr=&((buffer)->entry[index]))
+           */
 
 
 #define AESD_CIRCULAR_BUFFER_FOREACH(entryptr,buffer,index) \
-    bool pass = buffer->full; \
-    for(index = 0, entry = buffer->entry[index + buffer->out_offs]; \
-        (index + buffer->out_offs != buffer->in_offs && entry)|| pass; \
-        index = (index + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED , entry = buffer->entry[index + buffer->out_offs], pass = false)
+    bool pass = (buffer)->full; \
+    for(index = 0, (entryptr) = &((buffer)->entry[(index + (buffer)->out_offs)% AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED]); \
+        (index + (buffer)->out_offs != (buffer)->in_offs && (entryptr))|| pass; \
+        index = (index + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED , (entryptr) = &((buffer)->entry[(index + (buffer)->out_offs)% AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED]), pass = false)
 #endif /* AESD_CIRCULAR_BUFFER_H */
