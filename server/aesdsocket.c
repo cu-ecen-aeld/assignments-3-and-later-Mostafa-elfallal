@@ -18,7 +18,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include "queue.h"
-
+#include "aesd_ioctl.h"
 #define PORT 9000
 #define BUFFER_SIZE 1024
 #ifndef USE_AESD_CHAR_DEVICE
@@ -120,12 +120,31 @@ void *connector(void *arg) {
     }
 
     if (message_buf && total_len > 0) {
-        log_info("Writing received data to file");
+        const char* ioctlString = "AESDCHAR_IOCSEEKTO:";
+        char* ioctlCase = strstr(message_buf,ioctlString);
         pthread_mutex_lock(&file_mutex);
-        fwrite(message_buf, sizeof(char), total_len, file_fp);
-        fflush(file_fp);
-        rewind(file_fp);
-
+        if(ioctlCase != NULL)
+        {
+            log_info("Ioctl Command is found");
+            unsigned int x = atoi(ioctlCase+strlen(ioctlString));
+            char * separator = strchr(ioctlCase,',');
+            unsigned int y = atoi(separator + 1);
+            printf("[INFO] x = %d, y = %d",x,y);
+            struct aesd_seekto seekto;
+            seekto.write_cmd = x;
+            seekto.write_cmd_offset = y;
+            if (ioctl(fileno(file_fp),AESDCHAR_IOCSEEKTO,&seekto)< 0)
+            {
+                perror("ioctl failed");
+            }
+        }
+        else{
+            log_info("Writing received data to file");
+            fwrite(message_buf, sizeof(char), total_len, file_fp);
+            fflush(file_fp);
+            rewind(file_fp);
+    
+        }
         char file_buf[BUFFER_SIZE];
         size_t read_bytes;
         log_info("Sending file contents back to client");

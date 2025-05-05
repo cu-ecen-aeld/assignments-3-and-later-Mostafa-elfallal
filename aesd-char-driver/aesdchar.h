@@ -32,6 +32,7 @@ struct aesd_dev
      struct aesd_buffer_entry *entry; /* Buffer entry for AESD data */
      struct mutex lock; /* Mutex for synchronizing access to the device */
     struct cdev cdev;     /* Char device structure      */
+    loff_t size;
 };
 
 
