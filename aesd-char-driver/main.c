@@ -276,7 +276,7 @@ static int aesd_setup_cdev(struct aesd_dev *dev)
     return err;
 }
 
-
+ 
 
 int __init aesd_init_module(void)
 {
