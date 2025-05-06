@@ -79,7 +79,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         size_t remaining = entry->size - entry_offset_byte_rtn;
         PDEBUG("remaining = %zu \n",remaining);
         PDEBUG("count = %zu \n",count);
-        if(remaining > count) {
+        if(remaining >= count) {
             // read only the requested number of bytes
             if(copy_to_user(buf, entry->buffptr + entry_offset_byte_rtn, count)) {
                 mutex_unlock(&aesd_device.lock);
