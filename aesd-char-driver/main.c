@@ -123,6 +123,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if(aesd_device.entry->buffptr == NULL) {
         aesd_device.entry->buffptr = kmalloc(count, GFP_KERNEL);
         if(aesd_device.entry->buffptr == NULL) {
+            aesd_device.entry->size = 0;
             mutex_unlock(&aesd_device.lock);
             return -ENOMEM;
         }
@@ -130,6 +131,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     else {
         aesd_device.entry->buffptr = krealloc(aesd_device.entry->buffptr, aesd_device.entry->size + count, GFP_KERNEL);
         if(aesd_device.entry->buffptr == NULL) {
+            aesd_device.entry->size = 0;
             mutex_unlock(&aesd_device.lock);
             return -ENOMEM;
         }
@@ -137,6 +139,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if(copy_from_user((void *)&aesd_device.entry->buffptr[aesd_device.entry->size], buf, count)) {
         kfree(aesd_device.entry->buffptr);
         aesd_device.entry->buffptr = NULL;
+        aesd_device.entry->size = 0;
         mutex_unlock(&aesd_device.lock);
         return -EFAULT;
     }
@@ -157,6 +160,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         }
         aesd_device.size += count;
         aesd_device.entry->buffptr = NULL;
+        aesd_device.entry->size = 0;
     }
     retval = count;
     *f_pos += retval;
