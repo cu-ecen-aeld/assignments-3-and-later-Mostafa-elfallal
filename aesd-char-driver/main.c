@@ -148,15 +148,17 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         bool wasFull = aesd_device.circular_buffer.full;
         size_t entry_offset_byte_rtn;
         struct aesd_buffer_entry *oldEntry = NULL;
+        const char * oldEntryBuff = NULL;
         if(wasFull){
             oldEntry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.circular_buffer,0, &entry_offset_byte_rtn);
+            oldEntryBuff = oldEntry->buffptr;
         }
         aesd_circular_buffer_add_entry(&aesd_device.circular_buffer, aesd_device.entry);
         if(wasFull)
         {
             aesd_device.size -= oldEntry->size;
             PDEBUG("Freeing Old Entry buffer");
-            kfree(oldEntry->buffptr);
+            kfree(oldEntryBuff);
         }
         aesd_device.size += count;
         aesd_device.entry->buffptr = NULL;
