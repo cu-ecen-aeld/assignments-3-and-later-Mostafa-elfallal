@@ -82,6 +82,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 return -EFAULT;
             }
             retval = count;
+            *f_pos += retval;
+            PDEBUG("retval %zu",retval);
             mutex_unlock(&aesd_device.lock);
             return retval;
         }
