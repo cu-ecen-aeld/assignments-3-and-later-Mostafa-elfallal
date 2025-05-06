@@ -73,15 +73,19 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     struct aesd_buffer_entry *entry;
     size_t entry_offset_byte_rtn;
     while((entry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.circular_buffer, *f_pos, &entry_offset_byte_rtn))) {
+        PDEBUG("Entry size = %zu bytes\n",entry->size);
+        PDEBUG("f_pos = %lld \n",*f_pos);
+        PDEBUG("entry_offset_byte_rtn = %zu \n",entry_offset_byte_rtn);
         size_t remaining = entry->size - entry_offset_byte_rtn;
-        PDEBUG("remaining %zu bytes\n",remaining);
+        PDEBUG("remaining = %zu \n",remaining);
+        PDEBUG("count = %zu \n",count);
         if(remaining > count) {
             // read only the requested number of bytes
             if(copy_to_user(buf, entry->buffptr + entry_offset_byte_rtn, count)) {
                 mutex_unlock(&aesd_device.lock);
                 return -EFAULT;
             }
-            retval = count;
+            retval += count;
             *f_pos += retval;
             PDEBUG("retval %zu",retval);
             mutex_unlock(&aesd_device.lock);
@@ -94,11 +98,11 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 return -EFAULT;
             }
             retval += remaining;
+            *f_pos += remaining;
             count -= remaining;
             buf += remaining;
         }
     }
-    *f_pos += retval;
     PDEBUG("retval %zu",retval);
     mutex_unlock(&aesd_device.lock);
     return retval;
