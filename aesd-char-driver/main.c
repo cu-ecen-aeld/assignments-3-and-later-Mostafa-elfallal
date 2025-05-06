@@ -74,7 +74,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     size_t entry_offset_byte_rtn;
     while((entry = aesd_circular_buffer_find_entry_offset_for_fpos(&aesd_device.circular_buffer, *f_pos, &entry_offset_byte_rtn))) {
         size_t remaining = entry->size - entry_offset_byte_rtn;
-        PDEBUG("remaining %zu bytes\n",);
+        PDEBUG("remaining %zu bytes\n",remaining);
         if(remaining > count) {
             // read only the requested number of bytes
             if(copy_to_user(buf, entry->buffptr + entry_offset_byte_rtn, count)) {
